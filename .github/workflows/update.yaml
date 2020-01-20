@@ -5,6 +5,7 @@ on: [push]
 jobs:
   update:
     runs-on: ubuntu-latest
+    steps:
     - uses: actions/checkout@master
     - name: Update.sh
       run: |
