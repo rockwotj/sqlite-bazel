@@ -1,1 +1,1 @@
-# sqlite-bazel
+# SQLite Bazel
