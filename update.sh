@@ -2,6 +2,7 @@
 
 set -ex
 
+git submodule update --remote
 pushd sqlite
 git pull origin master
 popd
