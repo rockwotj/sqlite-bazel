@@ -24,5 +24,6 @@ jobs:
         ./.github/workflows/update.sh
     - name: Push changes
       uses: ad-m/github-push-action@master
+      if: git commit -m "Update sqlite"
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
