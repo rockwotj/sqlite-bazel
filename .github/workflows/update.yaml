@@ -8,7 +8,7 @@ jobs:
     steps:
     - name: Install tclsh
       shell: bash
-      run: apt-get install tcl-dev
+      run: sudo apt-get install tcl-dev
     - uses: actions/checkout@master
     - name: Checkout submodules
       shell: bash
