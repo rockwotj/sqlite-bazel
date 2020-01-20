@@ -9,4 +9,4 @@ popd
 ./sqlite/configure
 make sqlite3.c
 git add sqlite3.c sqlite3.h
-git commit -m "Update sqlite3"
+git commit -m "Monthyl update of sqlite3"

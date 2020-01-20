@@ -1,6 +1,8 @@
 name: Update SQLite3
 
-on: [push] 
+on:
+  schedule:
+    - cron:  '0 0 1 * *'
 
 jobs:
   update:
