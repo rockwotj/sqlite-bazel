@@ -6,6 +6,9 @@ jobs:
   update:
     runs-on: ubuntu-latest
     steps:
+    - name: Install tclsh
+      shell: bash
+      run: apt-get install tcl-dev
     - uses: actions/checkout@master
     - name: Checkout submodules
       shell: bash
