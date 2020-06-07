@@ -8,5 +8,5 @@ git pull origin master
 popd
 ./sqlite/configure
 make sqlite3.c
-git add sqlite3.c sqlite3.h
+git add sqlite3.c sqlite3.h sqlite
 git commit -m "Monthly update of sqlite3"
