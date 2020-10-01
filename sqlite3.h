@@ -125,7 +125,7 @@ extern "C" {
 */
 #define SQLITE_VERSION        "3.34.0"
 #define SQLITE_VERSION_NUMBER 3034000
-#define SQLITE_SOURCE_ID      "2020-08-31 18:49:04 dca5b91926431768babac28a6faf7674a5014db95caba727995b470e92b3182a"
+#define SQLITE_SOURCE_ID      "2020-09-30 18:06:51 4a43430fd23f88352c33b29c4c105b72f6dc821f94bf362040c41a1648c402e5"
 
 /*
 ** CAPI3REF: Run-Time Library Version Numbers
@@ -6199,7 +6199,7 @@ SQLITE_API int sqlite3_db_readonly(sqlite3 *db, const char *zDbName);
 ** <li value="1"> SQLITE_TXN_READ
 ** <li value="2"> SQLITE_TXN_WRITE
 ** </ol>
-** ^If the S argument to sqlite3_txn_state(D,S) is in the name of
+** ^If the S argument to sqlite3_txn_state(D,S) is not the name of
 ** a valid schema, then -1 is returned.
 */
 SQLITE_API int sqlite3_txn_state(sqlite3*,const char *zSchema);
@@ -9471,7 +9471,7 @@ SQLITE_API int sqlite3_db_cacheflush(sqlite3*);
 ** seventh parameter is the final rowid value of the row being inserted
 ** or updated. The value of the seventh parameter passed to the callback
 ** function is not defined for operations on WITHOUT ROWID tables, or for
-** INSERT operations on rowid tables.
+** DELETE operations on rowid tables.
 **
 ** The [sqlite3_preupdate_old()], [sqlite3_preupdate_new()],
 ** [sqlite3_preupdate_count()], and [sqlite3_preupdate_depth()] interfaces
