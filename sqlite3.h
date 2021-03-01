@@ -125,7 +125,7 @@ extern "C" {
 */
 #define SQLITE_VERSION        "3.35.0"
 #define SQLITE_VERSION_NUMBER 3035000
-#define SQLITE_SOURCE_ID      "2021-01-29 16:20:16 1ffd321a33b778e87614a26a91a8407ec7b9dec4f0f847b16b1dac4f3b910604"
+#define SQLITE_SOURCE_ID      "2021-02-27 15:32:02 a631c38d22bc00d38b0f112a623fb24c0e03a962f661ffe0931dad32fd31ba31"
 
 /*
 ** CAPI3REF: Run-Time Library Version Numbers
@@ -2115,7 +2115,13 @@ struct sqlite3_mem_methods {
 ** The second parameter is a pointer to an integer into which
 ** is written 0 or 1 to indicate whether triggers are disabled or enabled
 ** following this call.  The second parameter may be a NULL pointer, in
-** which case the trigger setting is not reported back. </dd>
+** which case the trigger setting is not reported back.
+**
+** <p>Originally this option disabled all triggers.  ^(However, since
+** SQLite version 3.35.0, TEMP triggers are still allowed even if
+** this option is off.  So, in other words, this option now only disables
+** triggers in the main database schema or in the schemas of ATTACH-ed
+** databases.)^ </dd>
 **
 ** [[SQLITE_DBCONFIG_ENABLE_VIEW]]
 ** <dt>SQLITE_DBCONFIG_ENABLE_VIEW</dt>
