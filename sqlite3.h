@@ -148,7 +148,7 @@ extern "C" {
 */
 #define SQLITE_VERSION        "3.37.0"
 #define SQLITE_VERSION_NUMBER 3037000
-#define SQLITE_SOURCE_ID      "2021-09-30 10:47:10 7d16b302826fec3606dbc6e20df0d2182f6946a2ed4076d2412d1df30c552ecb"
+#define SQLITE_SOURCE_ID      "2021-10-30 20:22:32 ca2703c339f76101f25051a2ed380398b018782883bfee68b5f2d69a1de9091a"
 
 /*
 ** CAPI3REF: Run-Time Library Version Numbers
@@ -539,7 +539,6 @@ SQLITE_API int sqlite3_exec(
 #define SQLITE_CANTOPEN_CONVPATH       (SQLITE_CANTOPEN | (4<<8))
 #define SQLITE_CANTOPEN_DIRTYWAL       (SQLITE_CANTOPEN | (5<<8)) /* Not Used */
 #define SQLITE_CANTOPEN_SYMLINK        (SQLITE_CANTOPEN | (6<<8))
-#define SQLITE_CANTOPEN_EXISTS         (SQLITE_CANTOPEN | (7<<8))
 #define SQLITE_CORRUPT_VTAB            (SQLITE_CORRUPT | (1<<8))
 #define SQLITE_CORRUPT_SEQUENCE        (SQLITE_CORRUPT | (2<<8))
 #define SQLITE_CORRUPT_INDEX           (SQLITE_CORRUPT | (3<<8))
@@ -575,6 +574,19 @@ SQLITE_API int sqlite3_exec(
 ** These bit values are intended for use in the
 ** 3rd parameter to the [sqlite3_open_v2()] interface and
 ** in the 4th parameter to the [sqlite3_vfs.xOpen] method.
+**
+** Only those flags marked as "Ok for sqlite3_open_v2()" may be
+** used as the third argument to the [sqlite3_open_v2()] interface.
+** The other flags have historically been ignored by sqlite3_open_v2(),
+** though future versions of SQLite might change so that an error is
+** raised if any of the disallowed bits are passed into sqlite3_open_v2().
+** Applications should not depend on the historical behavior.
+**
+** Note in particular that passing the SQLITE_OPEN_EXCLUSIVE flag into
+** [sqlite3_open_v2()] does *not* cause the underlying database file
+** to be opened using O_EXCL.  Passing SQLITE_OPEN_EXCLUSIVE into
+** [sqlite3_open_v2()] has historically be a no-op and might become an
+** error in future versions of SQLite.
 */
 #define SQLITE_OPEN_READONLY         0x00000001  /* Ok for sqlite3_open_v2() */
 #define SQLITE_OPEN_READWRITE        0x00000002  /* Ok for sqlite3_open_v2() */
@@ -3419,18 +3431,20 @@ SQLITE_API void sqlite3_progress_handler(sqlite3*, int, int(*)(void*), void*);
 **
 ** [[OPEN_NOFOLLOW]] ^(<dt>[SQLITE_OPEN_NOFOLLOW]</dt>
 ** <dd>The database filename is not allowed to be a symbolic link</dd>
-**
-** [[OPEN_EXCLUSIVE]] ^(<dt>[SQLITE_OPEN_EXCLUSIVE]</dt>
-** <dd>This flag causes the open to fail if the database file already
-** exists.  The open will only be success if this flag is used in combination
-** with the SQLITE_OPEN_CREATE and SQLITE_OPEN_READWRITE flags and if
-** the file does not previously exist.</dd>
 ** </dl>)^
 **
 ** If the 3rd parameter to sqlite3_open_v2() is not one of the
 ** required combinations shown above optionally combined with other
 ** [SQLITE_OPEN_READONLY | SQLITE_OPEN_* bits]
-** then the behavior is undefined.
+** then the behavior is undefined.  Historic versions of SQLite
+** have silently ignored surplus bits in the flags parameter to
+** sqlite3_open_v2(), however that behavior might not be carried through
+** into future versions of SQLite and so applications should not rely
+** upon it.  Note in particular that the SQLITE_OPEN_EXCLUSIVE flag is a no-op
+** for sqlite3_open_v2().  The SQLITE_OPEN_EXCLUSIVE does *not* cause
+** the open to fail if the database already exists.  The SQLITE_OPEN_EXCLUSIVE
+** flag is intended for use by the [sqlite3_vfs|VFS interface] only, and not
+** by sqlite3_open_v2().
 **
 ** ^The fourth parameter to sqlite3_open_v2() is the name of the
 ** [sqlite3_vfs] object that defines the operating system interface that
@@ -6391,6 +6405,72 @@ SQLITE_API sqlite3_stmt *sqlite3_next_stmt(sqlite3 *pDb, sqlite3_stmt *pStmt);
 */
 SQLITE_API void *sqlite3_commit_hook(sqlite3*, int(*)(void*), void*);
 SQLITE_API void *sqlite3_rollback_hook(sqlite3*, void(*)(void *), void*);
+
+/*
+** CAPI3REF: Autovacuum Compaction Amount Callback
+** METHOD: sqlite3
+**
+** ^The sqlite3_autovacuum_pages(D,C,P,X) interface registers a callback
+** function C that is invoked prior to each autovacuum of the database
+** file.  ^The callback is passed a copy of the generic data pointer (P),
+** the schema-name of the attached database that is being autovacuumed,
+** the the size of the database file in pages, the number of free pages,
+** and the number of bytes per page, respectively.  The callback should
+** return the number of free pages that should be removed by the
+** autovacuum.  ^If the callback returns zero, then no autovacuum happens.
+** ^If the value returned is greater than or equal to the number of
+** free pages, then a complete autovacuum happens.
+**
+** <p>^If there are multiple ATTACH-ed database files that are being
+** modified as part of a transaction commit, then the autovacuum pages
+** callback is invoked separately for each file.
+**
+** <p><b>The callback is not reentrant.</b> The callback function should
+** not attempt to invoke any other SQLite interface.  If it does, bad
+** things may happen, including segmentation faults and corrupt database
+** files.  The callback function should be a simple function that
+** does some arithmetic on its input parameters and returns a result.
+**
+** ^The X parameter to sqlite3_autovacuum_pages(D,C,P,X) is an optional
+** destructor for the P parameter.  ^If X is not NULL, then X(P) is
+** invoked whenever the database connection closes or when the callback
+** is overwritten by another invocation of sqlite3_autovacuum_pages().
+**
+** <p>^There is only one autovacuum pages callback per database connection.
+** ^Each call to the sqlite3_autovacuum_pages() interface overrides all
+** previous invocations for that database connection.  ^If the callback
+** argument (C) to sqlite3_autovacuum_pages(D,C,P,X) is a NULL pointer,
+** then the autovacuum steps callback is cancelled.  The return value
+** from sqlite3_autovacuum_pages() is normally SQLITE_OK, but might
+** be some other error code if something goes wrong.  The current
+** implementation will only return SQLITE_OK or SQLITE_MISUSE, but other
+** return codes might be added in future releases.
+**
+** <p>If no autovacuum pages callback is specified (the usual case) or
+** a NULL pointer is provided for the callback,
+** then the default behavior is to vacuum all free pages.  So, in other
+** words, the default behavior is the same as if the callback function
+** were something like this:
+**
+** <blockquote><pre>
+** &nbsp;   unsigned int demonstration_autovac_pages_callback(
+** &nbsp;     void *pClientData,
+** &nbsp;     const char *zSchema,
+** &nbsp;     unsigned int nDbPage,
+** &nbsp;     unsigned int nFreePage,
+** &nbsp;     unsigned int nBytePerPage
+** &nbsp;   ){
+** &nbsp;     return nFreePage;
+** &nbsp;   }
+** </pre></blockquote>
+*/
+SQLITE_API int sqlite3_autovacuum_pages(
+  sqlite3 *db,
+  unsigned int(*)(void*,const char*,unsigned int,unsigned int,unsigned int),
+  void*,
+  void(*)(void*)
+);
+
 
 /*
 ** CAPI3REF: Data Change Notification Callbacks
