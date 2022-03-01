@@ -146,9 +146,9 @@ extern "C" {
 ** [sqlite3_libversion_number()], [sqlite3_sourceid()],
 ** [sqlite_version()] and [sqlite_source_id()].
 */
-#define SQLITE_VERSION        "3.38.0"
-#define SQLITE_VERSION_NUMBER 3038000
-#define SQLITE_SOURCE_ID      "2022-02-01 00:00:08 fd42f4c304079356358e606dd96d4b84cf211c4334c586118b99fe9ad20e20ea"
+#define SQLITE_VERSION        "3.39.0"
+#define SQLITE_VERSION_NUMBER 3039000
+#define SQLITE_SOURCE_ID      "2022-02-28 16:44:58 1d3760a517b8bd2a6be82d2d5788945f49397cdc539fe28fd23e2c0c62a1dbe2"
 
 /*
 ** CAPI3REF: Run-Time Library Version Numbers
@@ -566,7 +566,7 @@ SQLITE_API int sqlite3_exec(
 #define SQLITE_WARNING_AUTOINDEX       (SQLITE_WARNING | (1<<8))
 #define SQLITE_AUTH_USER               (SQLITE_AUTH | (1<<8))
 #define SQLITE_OK_LOAD_PERMANENTLY     (SQLITE_OK | (1<<8))
-#define SQLITE_OK_SYMLINK              (SQLITE_OK | (2<<8))
+#define SQLITE_OK_SYMLINK              (SQLITE_OK | (2<<8)) /* internal use only */
 
 /*
 ** CAPI3REF: Flags For File Open Operations
@@ -3850,7 +3850,7 @@ SQLITE_API void sqlite3_free_filename(char*);
 ** SQL, the sqlite3_error_offset() interface returns the byte offset
 ** of the start of that token.  ^The byte offset returned by
 ** sqlite3_error_offset() assumes that the input SQL is UTF8.
-** ^If the most error does not reference a specific token in the input
+** ^If the most recent error does not reference a specific token in the input
 ** SQL, then the sqlite3_error_offset() function returns -1.
 **
 ** When the serialized [threading mode] is in use, it might be the
@@ -4284,6 +4284,10 @@ SQLITE_API const char *sqlite3_normalized_sql(sqlite3_stmt *pStmt);
 ** be false.  ^Similarly, a CREATE TABLE IF NOT EXISTS statement is a
 ** read-only no-op if the table already exists, but
 ** sqlite3_stmt_readonly() still returns false for such a statement.
+**
+** ^If prepared statement X is an [EXPLAIN] or [EXPLAIN QUERY PLAN]
+** statement, then sqlite3_stmt_readonly(X) returns the same value as
+** if the EXPLAIN or EXPLAIN QUERY PLAN prefix were omitted.
 */
 SQLITE_API int sqlite3_stmt_readonly(sqlite3_stmt *pStmt);
 
@@ -7211,7 +7215,7 @@ struct sqlite3_index_info {
 ** destructor.
 **
 ** ^If the third parameter (the pointer to the sqlite3_module object) is
-** NULL then no new module is create and any existing modules with the
+** NULL then no new module is created and any existing modules with the
 ** same name are dropped.
 **
 ** See also: [sqlite3_drop_modules()]
@@ -9605,6 +9609,128 @@ SQLITE_API SQLITE_EXPERIMENTAL const char *sqlite3_vtab_collation(sqlite3_index_
 SQLITE_API int sqlite3_vtab_distinct(sqlite3_index_info*);
 
 /*
+** CAPI3REF: Identify and handle IN constraints in xBestIndex
+**
+** This interface may only be used from within an
+** [xBestIndex|xBestIndex() method] of a [virtual table] implementation.
+** The result of invoking this interface from any other context is
+** undefined and probably harmful.
+**
+** ^(A constraint on a virtual table of the form
+** "[IN operator|column IN (...)]" is
+** communicated to the xBestIndex method as a
+** [SQLITE_INDEX_CONSTRAINT_EQ] constraint.)^  If xBestIndex wants to use
+** this constraint, it must set the corresponding
+** aConstraintUsage[].argvIndex to a postive integer.  ^(Then, under
+** the usual mode of handling IN operators, SQLite generates [bytecode]
+** that invokes the [xFilter|xFilter() method] once for each value
+** on the right-hand side of the IN operator.)^  Thus the virtual table
+** only sees a single value from the right-hand side of the IN operator
+** at a time.
+**
+** In some cases, however, it would be advantageous for the virtual
+** table to see all values on the right-hand of the IN operator all at
+** once.  The sqlite3_vtab_in() interfaces facilitates this in two ways:
+**
+** <ol>
+** <li><p>
+**   ^A call to sqlite3_vtab_in(P,N,-1) will return true (non-zero)
+**   if and only if the [sqlite3_index_info|P->aConstraint][N] constraint
+**   is an [IN operator] that can be processed all at once.  ^In other words,
+**   sqlite3_vtab_in() with -1 in the third argument is a mechanism
+**   by which the virtual table can ask SQLite if all-at-once processing
+**   of the IN operator is even possible.
+**
+** <li><p>
+**   ^A call to sqlite3_vtab_in(P,N,F) with F==1 or F==0 indicates
+**   to SQLite that the virtual table does or does not want to process
+**   the IN operator all-at-once, respectively.  ^Thus when the third
+**   parameter (F) is non-negative, this interface is the mechanism by
+**   which the virtual table tells SQLite how it wants to process the
+**   IN operator.
+** </ol>
+**
+** ^The sqlite3_vtab_in(P,N,F) interface can be invoked multiple times
+** within the same xBestIndex method call.  ^For any given P,N pair,
+** the return value from sqlite3_vtab_in(P,N,F) will always be the same
+** within the same xBestIndex call.  ^If the interface returns true
+** (non-zero), that means that the constraint is an IN operator
+** that can be processed all-at-once.  ^If the constraint is not an IN
+** operator or cannot be processed all-at-once, then the interface returns
+** false.
+**
+** ^(All-at-once processing of the IN operator is selected if both of the
+** following conditions are met:
+**
+** <ol>
+** <li><p> The P->aConstraintUsage[N].argvIndex value is set to a positive
+** integer.  This is how the virtual table tells SQLite that it wants to
+** use the N-th constraint.
+**
+** <li><p> The last call to sqlite3_vtab_in(P,N,F) for which F was
+** non-negative had F>=1.
+** </ol>)^
+**
+** ^If either or both of the conditions above are false, then SQLite uses
+** the traditional one-at-a-time processing strategy for the IN constraint.
+** ^If both conditions are true, then the argvIndex-th parameter to the
+** xFilter method will be an [sqlite3_value] that appears to be NULL,
+** but which can be passed to [sqlite3_vtab_in_first()] and
+** [sqlite3_vtab_in_next()] to find all values on the right-hand side
+** of the IN constraint.
+*/
+SQLITE_API int sqlite3_vtab_in(sqlite3_index_info*, int iCons, int bHandle);
+
+/*
+** CAPI3REF: Find all elements on the right-hand side of an IN constraint.
+**
+** These interfaces are only useful from within the
+** [xFilter|xFilter() method] of a [virtual table] implementation.
+** The result of invoking these interfaces from any other context
+** is undefined and probably harmful.
+**
+** The X parameter in a call to sqlite3_vtab_in_first(X,P) or
+** sqlite3_vtab_in_next(X,P) must be one of the parameters to the
+** xFilter method which invokes these routines, and specifically
+** a parameter that was previously selected for all-at-once IN constraint
+** processing use the [sqlite3_vtab_in()] interface in the
+** [xBestIndex|xBestIndex method].  ^(If the X parameter is not
+** an xFilter argument that was selected for all-at-once IN constraint
+** processing, then these routines return [SQLITE_MISUSE])^ or perhaps
+** exhibit some other undefined or harmful behavior.
+**
+** ^(Use these routines to access all values on the right-hand side
+** of the IN constraint using code like the following:
+**
+** <blockquote><pre>
+** &nbsp;  for(rc=sqlite3_vtab_in_first(pList, &pVal);
+** &nbsp;      rc==SQLITE_OK && pVal
+** &nbsp;      rc=sqlite3_vtab_in_next(pList, &pVal)
+** &nbsp;  ){
+** &nbsp;    // do something with pVal
+** &nbsp;  }
+** &nbsp;  if( rc!=SQLITE_OK ){
+** &nbsp;    // an error has occurred
+** &nbsp;  }
+** </pre></blockquote>)^
+**
+** ^On success, the sqlite3_vtab_in_first(X,P) and sqlite3_vtab_in_next(X,P)
+** routines return SQLITE_OK and set *P to point to the first or next value
+** on the RHS of the IN constraint.  ^If there are no more values on the
+** right hand side of the IN constraint, then *P is set to NULL and these
+** routines return [SQLITE_DONE].  ^The return value might be
+** some other value, such as SQLITE_NOMEM, in the event of a malfunction.
+**
+** The *ppOut values returned by these routines are only valid until the
+** next call to either of these routines or until the end of the xFilter
+** method from which these routines were called.  If the virtual table
+** implementation needs to retain the *ppOut values for longer, it must make
+** copies.  The *ppOut values are [protected sqlite3_value|protected].
+*/
+SQLITE_API int sqlite3_vtab_in_first(sqlite3_value *pVal, sqlite3_value **ppOut);
+SQLITE_API int sqlite3_vtab_in_next(sqlite3_value *pVal, sqlite3_value **ppOut);
+
+/*
 ** CAPI3REF: Constraint values in xBestIndex()
 ** METHOD: sqlite3_index_info
 **
@@ -9641,7 +9767,7 @@ SQLITE_API int sqlite3_vtab_distinct(sqlite3_index_info*);
 ** ^When xBestIndex returns, the sqlite3_value object returned by
 ** sqlite3_vtab_rhs_value() is automatically deallocated.
 **
-** The "_rhs_" in the name of this routine is an appreviation for
+** The "_rhs_" in the name of this routine is an abbreviation for
 ** "Right-Hand Side".
 */
 SQLITE_API int sqlite3_vtab_rhs_value(sqlite3_index_info*, int, sqlite3_value **ppVal);
