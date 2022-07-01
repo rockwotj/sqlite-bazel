@@ -146,9 +146,9 @@ extern "C" {
 ** [sqlite3_libversion_number()], [sqlite3_sourceid()],
 ** [sqlite_version()] and [sqlite_source_id()].
 */
-#define SQLITE_VERSION        "3.39.0"
-#define SQLITE_VERSION_NUMBER 3039000
-#define SQLITE_SOURCE_ID      "2022-06-01 00:00:59 f6d6f969791f0d2367ae5418623b4794f6df657d9d7d9002fb5aec4206dcfd4c"
+#define SQLITE_VERSION        "3.40.0"
+#define SQLITE_VERSION_NUMBER 3040000
+#define SQLITE_SOURCE_ID      "2022-06-30 22:46:28 8a6913b66cc5af354497044ccb849eb80d00d0799362475f1537a6999196895e"
 
 /*
 ** CAPI3REF: Run-Time Library Version Numbers
@@ -6282,7 +6282,7 @@ SQLITE_API sqlite3 *sqlite3_db_handle(sqlite3_stmt*);
 **
 ** ^The sqlite3_db_name(D,N) interface returns a pointer to the schema name
 ** for the N-th database on database connection D, or a NULL pointer of N is
-** out of range.  An N alue of 0 means the main database file.  An N of 1 is
+** out of range.  An N value of 0 means the main database file.  An N of 1 is
 ** the "temp" schema.  Larger values of N correspond to various ATTACH-ed
 ** databases.
 **
