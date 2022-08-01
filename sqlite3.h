@@ -148,7 +148,7 @@ extern "C" {
 */
 #define SQLITE_VERSION        "3.40.0"
 #define SQLITE_VERSION_NUMBER 3040000
-#define SQLITE_SOURCE_ID      "2022-06-30 22:46:28 8a6913b66cc5af354497044ccb849eb80d00d0799362475f1537a6999196895e"
+#define SQLITE_SOURCE_ID      "2022-07-26 19:10:13 01de7ec44fb1e8e6f847eaef433216b3163a44a8789451718e1c419ef840ddfb"
 
 /*
 ** CAPI3REF: Run-Time Library Version Numbers
@@ -3439,7 +3439,7 @@ SQLITE_API void sqlite3_progress_handler(sqlite3*, int, int(*)(void*), void*);
 ** to return an extended result code.</dd>
 **
 ** [[OPEN_NOFOLLOW]] ^(<dt>[SQLITE_OPEN_NOFOLLOW]</dt>
-** <dd>The database filename is not allowed to be a symbolic link</dd>
+** <dd>The database filename is not allowed to contain a symbolic link</dd>
 ** </dl>)^
 **
 ** If the 3rd parameter to sqlite3_open_v2() is not one of the
