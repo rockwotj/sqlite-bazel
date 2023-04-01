@@ -148,7 +148,7 @@ extern "C" {
 */
 #define SQLITE_VERSION        "3.42.0"
 #define SQLITE_VERSION_NUMBER 3042000
-#define SQLITE_SOURCE_ID      "2023-02-28 21:23:46 4fe1419ac3161ea8735241b04913593170c636cf3e1583756fe94edd396cd38b"
+#define SQLITE_SOURCE_ID      "2023-03-31 23:48:59 babe2b5e59647ac9db4601e67c25190aac14eb76d5fcb9fa5b3692b955fefd61"
 
 /*
 ** CAPI3REF: Run-Time Library Version Numbers
@@ -2456,7 +2456,7 @@ struct sqlite3_mem_methods {
 ** not considered a bug since SQLite versions 3.3.0 and earlier do not support
 ** either generated columns or decending indexes.
 ** </dd>
-
+**
 ** [[SQLITE_DBCONFIG_STMT_SCANSTATUS]]
 ** <dt>SQLITE_DBCONFIG_STMT_SCANSTATUS</td>
 ** <dd>The SQLITE_DBCONFIG_STMT_SCANSTATUS option is only useful in
@@ -2464,8 +2464,18 @@ struct sqlite3_mem_methods {
 ** a flag that enables collection of the sqlite3_stmt_scanstatus_v2()
 ** statistics. For statistics to be collected, the flag must be set on
 ** the database handle both when the SQL statement is prepared and when it
-** is stepped. The flag is clear (collection of statistics is disabled)
-** by default.
+** is stepped. The flag is set (collection of statistics is enabled)
+** by default.</dd>
+**
+** [[SQLITE_DBCONFIG_REVERSE_SCANORDER]]
+** <dt>SQLITE_DBCONFIG_REVERSE_SCANORDER</td>
+** <dd>The SQLITE_DBCONFIG_REVERSE_SCANORDER option change the default order
+** in which tables and indexes are scanned so that the scans start at the end
+** and work toward the beginning rather than starting at the beginning and
+** working toward the end.  Setting SQLITE_DBCONFIG_REVERSE_SCANORDER is the
+** same as setting [PRAGMA reverse_unordered_selects].  This configuration option
+** is useful for application testing.</dd>
+**
 ** </dl>
 */
 #define SQLITE_DBCONFIG_MAINDBNAME            1000 /* const char* */
@@ -2486,8 +2496,9 @@ struct sqlite3_mem_methods {
 #define SQLITE_DBCONFIG_ENABLE_VIEW           1015 /* int int* */
 #define SQLITE_DBCONFIG_LEGACY_FILE_FORMAT    1016 /* int int* */
 #define SQLITE_DBCONFIG_TRUSTED_SCHEMA        1017 /* int int* */
-#define SQLITE_DBCONFIG_STMT_SCANSTATUS       1018 /* int int* */
-#define SQLITE_DBCONFIG_MAX                   1018 /* Largest DBCONFIG */
+#define SQLITE_DBCONFIG_STMT_SCANSTATUS       1080 /* int int*  */
+#define SQLITE_DBCONFIG_REVERSE_SCANORDER     1019 /* int int* */
+#define SQLITE_DBCONFIG_MAX                   1019 /* Largest DBCONFIG */
 
 /*
 ** CAPI3REF: Enable Or Disable Extended Result Codes
@@ -11944,9 +11955,23 @@ SQLITE_API int sqlite3changeset_apply_v2(
 **   Invert the changeset before applying it. This is equivalent to inverting
 **   a changeset using sqlite3changeset_invert() before applying it. It is
 **   an error to specify this flag with a patchset.
+**
+** <dt>SQLITE_CHANGESETAPPLY_IGNORENOOP <dd>
+**   Do not invoke the conflict handler callback for any changes that
+**   would not actually modify the database even if they were applied.
+**   Specifically, this means that the conflict handler is not invoked
+**   for:
+**    <ul>
+**    <li>a delete change if the row being deleted cannot be found,
+**    <li>an update change if the modified fields are already set to
+**        their new values in the conflicting row, or
+**    <li>an insert change if all fields of the conflicting row match
+**        the row being inserted.
+**    </ul>
 */
 #define SQLITE_CHANGESETAPPLY_NOSAVEPOINT   0x0001
 #define SQLITE_CHANGESETAPPLY_INVERT        0x0002
+#define SQLITE_CHANGESETAPPLY_IGNORENOOP    0x0004
 
 /*
 ** CAPI3REF: Constants Passed To The Conflict Handler
