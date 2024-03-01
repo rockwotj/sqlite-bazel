@@ -148,7 +148,7 @@ extern "C" {
 */
 #define SQLITE_VERSION        "3.46.0"
 #define SQLITE_VERSION_NUMBER 3046000
-#define SQLITE_SOURCE_ID      "2024-01-31 20:11:54 44b5524d522e749ad6bf76c94d754ff16c309c32439ec46802924663f64e8b09"
+#define SQLITE_SOURCE_ID      "2024-02-29 10:55:02 803481f25020f3c25941f1e7d1a8071937820dea951e8798198b0b0fa3fb48ce"
 
 /*
 ** CAPI3REF: Run-Time Library Version Numbers
@@ -420,6 +420,8 @@ typedef int (*sqlite3_callback)(void*,int,char**, char**);
 **      the 1st parameter to sqlite3_exec() while sqlite3_exec() is running.
 ** <li> The application must not modify the SQL statement text passed into
 **      the 2nd parameter of sqlite3_exec() while sqlite3_exec() is running.
+** <li> The application must not dereference the arrays or string pointers
+**       passed as the 3rd and 4th callback parameters after it returns.
 ** </ul>
 */
 SQLITE_API int sqlite3_exec(
@@ -762,11 +764,11 @@ struct sqlite3_file {
 ** </ul>
 ** xLock() upgrades the database file lock.  In other words, xLock() moves the
 ** database file lock in the direction NONE toward EXCLUSIVE. The argument to
-** xLock() is always on of SHARED, RESERVED, PENDING, or EXCLUSIVE, never
+** xLock() is always one of SHARED, RESERVED, PENDING, or EXCLUSIVE, never
 ** SQLITE_LOCK_NONE.  If the database file lock is already at or above the
 ** requested lock, then the call to xLock() is a no-op.
 ** xUnlock() downgrades the database file lock to either SHARED or NONE.
-*  If the lock is already at or below the requested lock state, then the call
+** If the lock is already at or below the requested lock state, then the call
 ** to xUnlock() is a no-op.
 ** The xCheckReservedLock() method checks whether any database connection,
 ** either in this process or in some other process, is holding a RESERVED,
