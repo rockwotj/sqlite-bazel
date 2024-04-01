@@ -148,7 +148,7 @@ extern "C" {
 */
 #define SQLITE_VERSION        "3.46.0"
 #define SQLITE_VERSION_NUMBER 3046000
-#define SQLITE_SOURCE_ID      "2024-02-29 10:55:02 803481f25020f3c25941f1e7d1a8071937820dea951e8798198b0b0fa3fb48ce"
+#define SQLITE_SOURCE_ID      "2024-03-30 14:11:30 090943dc31e7a3af5c11c1c0953cb82ae3ca07ba000189bb85deaecc76921504"
 
 /*
 ** CAPI3REF: Run-Time Library Version Numbers
@@ -2143,6 +2143,22 @@ struct sqlite3_mem_methods {
 ** configuration setting is never used, then the default maximum is determined
 ** by the [SQLITE_MEMDB_DEFAULT_MAXSIZE] compile-time option.  If that
 ** compile-time option is not set, then the default maximum is 1073741824.
+**
+** [[SQLITE_CONFIG_ROWID_IN_VIEW]]
+** <dt>SQLITE_CONFIG_ROWID_IN_VIEW
+** <dd>The SQLITE_CONFIG_ROWID_IN_VIEW option enables or disables the ability
+** for VIEWs to have a ROWID.  The capability can only be enabled if SQLite is
+** compiled with -DSQLITE_ALLOW_ROWID_IN_VIEW, in which case the capability
+** defaults to on.  This configuration option queries the current setting or
+** changes the setting to off or on.  The argument is a pointer to an integer.
+** If that integer initially holds a value of 1, then the ability for VIEWs to
+** have ROWIDs is activated.  If the integer initially holds zero, then the
+** ability is deactivated.  Any other initial value for the integer leaves the
+** setting unchanged.  After changes, if any, the integer is written with
+** a 1 or 0, if the ability for VIEWs to have ROWIDs is on or off.  If SQLite
+** is compiled without -DSQLITE_ALLOW_ROWID_IN_VIEW (which is the usual and
+** recommended case) then the integer is always filled with zero, regardless
+** if its initial value.
 ** </dl>
 */
 #define SQLITE_CONFIG_SINGLETHREAD         1  /* nil */
@@ -2174,6 +2190,7 @@ struct sqlite3_mem_methods {
 #define SQLITE_CONFIG_SMALL_MALLOC        27  /* boolean */
 #define SQLITE_CONFIG_SORTERREF_SIZE      28  /* int nByte */
 #define SQLITE_CONFIG_MEMDB_MAXSIZE       29  /* sqlite3_int64 */
+#define SQLITE_CONFIG_ROWID_IN_VIEW       30  /* int* */
 
 /*
 ** CAPI3REF: Database Connection Configuration Options
@@ -3288,8 +3305,8 @@ SQLITE_API int sqlite3_set_authorizer(
 #define SQLITE_RECURSIVE            33   /* NULL            NULL            */
 
 /*
-** CAPI3REF: Tracing And Profiling Functions
-** METHOD: sqlite3
+** CAPI3REF: Deprecated Tracing And Profiling Functions
+** DEPRECATED
 **
 ** These routines are deprecated. Use the [sqlite3_trace_v2()] interface
 ** instead of the routines described here.
@@ -6870,6 +6887,12 @@ SQLITE_API int sqlite3_autovacuum_pages(
 ** The exceptions defined in this paragraph might change in a future
 ** release of SQLite.
 **
+** Whether the update hook is invoked before or after the
+** corresponding change is currently unspecified and may differ
+** depending on the type of change. Do not rely on the order of the
+** hook call with regards to the final result of the operation which
+** triggers the hook.
+**
 ** The update hook implementation must not do anything that will modify
 ** the database connection that invoked the update hook.  Any actions
 ** to modify the database connection must be deferred until after the
@@ -8340,7 +8363,7 @@ SQLITE_API int sqlite3_test_control(int op, ...);
 ** The sqlite3_keyword_count() interface returns the number of distinct
 ** keywords understood by SQLite.
 **
-** The sqlite3_keyword_name(N,Z,L) interface finds the N-th keyword and
+** The sqlite3_keyword_name(N,Z,L) interface finds the 0-based N-th keyword and
 ** makes *Z point to that keyword expressed as UTF8 and writes the number
 ** of bytes in the keyword into *L.  The string that *Z points to is not
 ** zero-terminated.  The sqlite3_keyword_name(N,Z,L) routine returns
@@ -12785,8 +12808,8 @@ struct Fts5PhraseIter {
 ** EXTENSION API FUNCTIONS
 **
 ** xUserData(pFts):
-**   Return a copy of the context pointer the extension function was
-**   registered with.
+**   Return a copy of the pUserData pointer passed to the xCreateFunction()
+**   API when the extension function was registered.
 **
 ** xColumnTotalSize(pFts, iCol, pnToken):
 **   If parameter iCol is less than zero, set output variable *pnToken
