@@ -5,5 +5,6 @@ cc_library(
     srcs = ["sqlite3.c"],
     hdrs = ["sqlite3.h"],
     visibility = ["//visibility:public"],
+    includes = ["."],
     deps = [],
 )
