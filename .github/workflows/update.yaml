@@ -10,14 +10,15 @@ jobs:
     steps:
     - name: Install tclsh
       shell: bash
-      run: sudo apt-get install tcl-dev
-    - uses: actions/checkout@master
-    - name: Checkout submodules
-      shell: bash
       run: |
-        auth_header="$(git config --local --get http.https://github.com/.extraheader)"
-        git submodule sync --recursive
-        git -c "http.extraheader=$auth_header" -c protocol.version=2 submodule update --init --force --recursive --depth=1
+        sudo apt-get update
+        sudo apt-get install -y tcl-dev
+    - name: Checkout repository (with submodules)
+      uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        submodules: recursive
+        fetch-depth: 0
     - name: Update.sh
       shell: bash
       run: |
@@ -25,6 +26,6 @@ jobs:
         git config --local user.name "GitHub Action"
         ./.github/workflows/update.sh
     - name: Push changes
-      uses: ad-m/github-push-action@master
+      uses: ad-m/github-push-action@v0.6.0
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
