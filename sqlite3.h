@@ -148,10 +148,10 @@ extern "C" {
 */
 #define SQLITE_VERSION        "3.52.0"
 #define SQLITE_VERSION_NUMBER 3052000
-#define SQLITE_SOURCE_ID      "2025-11-30 23:09:24 35f39f7cb1030b1a57f2921f50ab600496fc1e774593717845e87f2e47dc49ba"
+#define SQLITE_SOURCE_ID      "2025-12-31 20:43:31 a5f922b0832d9544b083f3d55d4029aa80e320bf5505547c5a1ddb21f4685e3e"
 #define SQLITE_SCM_BRANCH     "trunk"
 #define SQLITE_SCM_TAGS       ""
-#define SQLITE_SCM_DATETIME   "2025-11-30T23:09:24.695Z"
+#define SQLITE_SCM_DATETIME   "2025-12-31T20:43:31.772Z"
 
 /*
 ** CAPI3REF: Run-Time Library Version Numbers
@@ -4433,12 +4433,28 @@ SQLITE_API int sqlite3_limit(sqlite3*, int id, int newVal);
 ** fails, the sqlite3_prepare_v3() call returns the same error indications
 ** with or without this flag; it just omits the call to [sqlite3_log()] that
 ** logs the error.
+**
+** [[SQLITE_PREPARE_FROM_DDL]] <dt>SQLITE_PREPARE_FROM_DDL</dt>
+** <dd>The SQLITE_PREPARE_FROM_DDL flag causes the SQL compiler to behave as if
+** the SQL statement is part of a database schema. This makes a difference
+** when the [SQLITE_DBCONFIG_TRUSTED_SCHEMA] option is set to off.
+** When this option is used and SQLITE_DBCONFIG_TRUSTED_SCHEMA is off,
+** SQL functions may not be called unless they are tagged with
+** [SQLITE_INNOCUOUS] and virtual tables may not be used unless tagged
+** with [SQLITE_VTAB_INNOCUOUS].  Use the SQLITE_PREPARE_FROM_DDL option
+** when preparing SQL that is derived from parts of the database
+** schema. In particular, virtual table implementations that
+** run SQL statements based on the arguments to their CREATE VIRTUAL
+** TABLE statement should use [sqlite3_prepare_v3()] and set the
+** SQLITE_PREPARE_FROM_DLL flag to prevent bypass of the
+** [SQLITE_DBCONFIG_TRUSTED_SCHEMA] security checks.
 ** </dl>
 */
 #define SQLITE_PREPARE_PERSISTENT              0x01
 #define SQLITE_PREPARE_NORMALIZE               0x02
 #define SQLITE_PREPARE_NO_VTAB                 0x04
 #define SQLITE_PREPARE_DONT_LOG                0x10
+#define SQLITE_PREPARE_FROM_DDL                0x20
 
 /*
 ** CAPI3REF: Compiling An SQL Statement
@@ -4452,8 +4468,9 @@ SQLITE_API int sqlite3_limit(sqlite3*, int id, int newVal);
 **
 ** The preferred routine to use is [sqlite3_prepare_v2()].  The
 ** [sqlite3_prepare()] interface is legacy and should be avoided.
-** [sqlite3_prepare_v3()] has an extra "prepFlags" option that is used
-** for special purposes.
+** [sqlite3_prepare_v3()] has an extra
+** [SQLITE_PREPARE_FROM_DDL|"prepFlags" option] that is some times
+** needed for special purpose or to pass along security restrictions.
 **
 ** The use of the UTF-8 interfaces is preferred, as SQLite currently
 ** does all parsing using UTF-8.  The UTF-16 interfaces are provided
@@ -7427,7 +7444,7 @@ SQLITE_API int sqlite3_table_column_metadata(
 ** ^The sqlite3_load_extension() interface attempts to load an
 ** [SQLite extension] library contained in the file zFile.  If
 ** the file cannot be loaded directly, attempts are made to load
-** with various operating-system specific extensions added.
+** with various operating-system specific filename extensions added.
 ** So for example, if "samplelib" cannot be loaded, then names like
 ** "samplelib.so" or "samplelib.dylib" or "samplelib.dll" might
 ** be tried also.
@@ -7435,10 +7452,10 @@ SQLITE_API int sqlite3_table_column_metadata(
 ** ^The entry point is zProc.
 ** ^(zProc may be 0, in which case SQLite will try to come up with an
 ** entry point name on its own.  It first tries "sqlite3_extension_init".
-** If that does not work, it constructs a name "sqlite3_X_init" where
-** X consists of the lower-case equivalent of all ASCII alphabetic
-** characters in the filename from the last "/" to the first following
-** "." and omitting any initial "lib".)^
+** If that does not work, it tries names of the form "sqlite3_X_init"
+** where X consists of the lower-case equivalent of all ASCII alphabetic
+** characters or all ASCII alphanumeric characters in the filename from
+** the last "/" to the first following "." and omitting any initial "lib".)^
 ** ^The sqlite3_load_extension() interface returns
 ** [SQLITE_OK] on success and [SQLITE_ERROR] if something goes wrong.
 ** ^If an error occurs and pzErrMsg is not 0, then the
