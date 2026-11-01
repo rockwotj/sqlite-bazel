@@ -146,12 +146,12 @@ extern "C" {
 ** [sqlite3_libversion_number()], [sqlite3_sourceid()],
 ** [sqlite_version()] and [sqlite_source_id()].
 */
-#define SQLITE_VERSION        "3.54.0"
-#define SQLITE_VERSION_NUMBER 3054000
-#define SQLITE_SOURCE_ID      "2026-09-30 20:59:50 b838769b4b115518feba1ea1f6a39f49427870cae824ec7225627565ab91de3e"
+#define SQLITE_VERSION        "3.55.0"
+#define SQLITE_VERSION_NUMBER 3055000
+#define SQLITE_SOURCE_ID      "2026-11-01 00:42:11 ca551ede9cda21c39fabaa03e0a64676d5b454bd20d0b66316bc975bd519b603"
 #define SQLITE_SCM_BRANCH     "trunk"
 #define SQLITE_SCM_TAGS       ""
-#define SQLITE_SCM_DATETIME   "2026-09-30T20:59:50.681Z"
+#define SQLITE_SCM_DATETIME   "2026-11-01T00:42:11.171Z"
 
 /*
 ** CAPI3REF: Run-Time Library Version Numbers
@@ -463,7 +463,7 @@ SQLITE_API int sqlite3_exec(
 #define SQLITE_FULL        13   /* Insertion failed because database is full */
 #define SQLITE_CANTOPEN    14   /* Unable to open the database file */
 #define SQLITE_PROTOCOL    15   /* Database lock protocol error */
-#define SQLITE_EMPTY       16   /* Internal use only */
+#define SQLITE_EMPTY       16   /* No content */
 #define SQLITE_SCHEMA      17   /* The database schema changed */
 #define SQLITE_TOOBIG      18   /* String or BLOB exceeds size limit */
 #define SQLITE_CONSTRAINT  19   /* Abort due to constraint violation */
@@ -2670,6 +2670,13 @@ struct sqlite3_mem_methods {
 ** is a pointer to an integer.  If the pointer is not NULL, then the value of
 ** the FP_DIGITS setting, after possibly being modified by the first
 ** arguments, is written into the integer to which the second argument points.
+**
+** [[SQLITE_DBCONFIG_VDBE_TRACE]]
+** <dt>SQLITE_DBCONFIG_VDBE_TRACE</dt>
+** <dd>The SQLITE_DBCONFIG_VDBE_TRACE setting enables or disables tracing
+** of the [bytecode engine].  This setting is only available when SQLite has
+** be compiled with -DSQLITE_DEBUG.  It is the equivalent of using
+** [PRAGMA vdbe_trace].
 ** </dd>
 **
 ** </dl>
@@ -2720,7 +2727,8 @@ struct sqlite3_mem_methods {
 #define SQLITE_DBCONFIG_ENABLE_ATTACH_WRITE   1021 /* int int* */
 #define SQLITE_DBCONFIG_ENABLE_COMMENTS       1022 /* int int* */
 #define SQLITE_DBCONFIG_FP_DIGITS             1023 /* int int* */
-#define SQLITE_DBCONFIG_MAX                   1023 /* Largest DBCONFIG */
+#define SQLITE_DBCONFIG_VDBE_TRACE            1024 /* int int* */
+#define SQLITE_DBCONFIG_MAX                   1024 /* Largest DBCONFIG */
 
 /*
 ** CAPI3REF: Enable Or Disable Extended Result Codes
@@ -2975,10 +2983,14 @@ SQLITE_API int sqlite3_is_interrupted(sqlite3*);
 ** SQLITE_NOMEM is returned.
 **
 ** The [sqlite3_incomplete(X)] routine is similar to [sqlite3_complete(X)]
-** except that sqlite3_incomplete(X) returns 0 if the input X is complete
-** and non-zero if X is incomplete.  The non-zero return from
+** except that sqlite3_incomplete(X) returns SQLITE_OK if the input X is
+** complete, SQLITE_EMPTY if input X consists entirely of whitespace and/or
+** comments, SQLITE_MISUSE if X is a NULL pointer, and some other non-zero
+** value  if X is incomplete.  The non-zero return from
 ** sqlite3_incomplete(X) contains additional information about what is
-** needed to complete the input X.  The sqlite3_incomplete(X) interface
+** needed to complete the input X.  See the header comment on the
+** implemenation of the sqlite3_incomplete() routine for a full description
+** of its non-zero return values.  The sqlite3_incomplete(X) interface
 ** is only available for UTF-8 text.
 **
 ** ^None of these routines do a full parse the SQL statements and thus
@@ -4076,7 +4088,7 @@ SQLITE_API int sqlite3_open_v2(
 **
 ** The sqlite3_uri_int64(F,P,D) routine converts the value of P into a
 ** 64-bit signed integer and returns that integer, or D if P does not
-** exist or ff the value of P is something other than an integer.
+** exist or if the value of P is something other than an integer.
 **
 ** The sqlite3_uri_key(F,N) returns a pointer to the name (not
 ** the value) of the N-th query parameter for filename F, or a NULL
@@ -4445,6 +4457,15 @@ SQLITE_API int sqlite3_limit(sqlite3*, int id, int newVal);
 ** [[SQLITE_LIMIT_TRIGGER_STEPS]] ^(<dt>SQLITE_LIMIT_TRIGGER_STEPS</dt>
 ** <dd>The maximum number of SQL statements that can be contained within
 ** a single trigger.</dd>)^
+**
+** [[SQLITE_LIMIT_CTES]] ^(<dt>SQLITE_LIMIT_CTES</dt>
+** <dd>The maximum number of [common table expressions] (CTEs) allowed
+** in a single SQL statements.  This limit is used to limit possible
+** exponential growth in the number of required cursors required for
+** nested joins of CTEs.  The limit is an absolute upper bound, and
+** SQLite may refuse to compile a statement if the number of CTEs simply
+** approaches this limit.  Set this limit to 0 to disable the restriction.
+** </dd>)^
 ** </dl>
 */
 #define SQLITE_LIMIT_LENGTH                    0
@@ -4462,6 +4483,7 @@ SQLITE_API int sqlite3_limit(sqlite3*, int id, int newVal);
 #define SQLITE_LIMIT_PARSER_DEPTH             12
 #define SQLITE_LIMIT_SCHEMA                   13
 #define SQLITE_LIMIT_TRIGGER_STEPS            14
+#define SQLITE_LIMIT_CTES                     15
 
 /*
 ** CAPI3REF: Prepare Flags
@@ -5874,6 +5896,10 @@ SQLITE_API int sqlite3_create_window_function(
 ** These constants define integer codes that represent the various
 ** text encodings supported by SQLite.
 **
+** If any value other than the ones defined here are passed into the
+** "encoding" argument of an API function, then the results are
+** unspecified and subject to change.
+**
 ** <dl>
 ** [[SQLITE_UTF8]] <dt>SQLITE_UTF8</dt><dd>Text is encoding as UTF-8</dd>
 **
@@ -6856,6 +6882,10 @@ SQLITE_API void sqlite3_activate_cerod(
 ** at all. ^In SQLite version 3.42.0 and later, a negative
 ** argument passed into sqlite3_sleep() is changed to zero before it is relayed
 ** down into the xSleep method of the VFS.
+**
+** The maximum sleep time is 2147483 milliseconds (about 35 minutes and
+** 47 seconds).  If the argument to sqlite3_sleep() is greater than 2147483,
+** the sleep time is capped at 2147483 milliseconds.
 */
 SQLITE_API int sqlite3_sleep(int);
 
@@ -8771,7 +8801,8 @@ SQLITE_API int sqlite3_test_control(int op, ...);
 #define SQLITE_TESTCTRL_LOGEST                  33
 #define SQLITE_TESTCTRL_USELONGDOUBLE           34  /* NOT USED */
 #define SQLITE_TESTCTRL_ATOF                    34
-#define SQLITE_TESTCTRL_LAST                    34  /* Largest TESTCTRL */
+#define SQLITE_TESTCTRL_EXPIRE_STMTS            35
+#define SQLITE_TESTCTRL_LAST                    35  /* Largest TESTCTRL */
 
 /*
 ** CAPI3REF: SQL Keyword Checking
@@ -11250,7 +11281,7 @@ SQLITE_API int sqlite3_snapshot_recover(sqlite3 *db, const char *zDb);
 **
 ** A call to sqlite3_serialize(D,S,P,F) might return NULL even if the
 ** SQLITE_SERIALIZE_NOCOPY bit is omitted from argument F if a memory
-** allocation error occurs.
+** allocation or I/O error occurs.
 **
 ** This interface is omitted if SQLite is compiled with the
 ** [SQLITE_OMIT_DESERIALIZE] option.
